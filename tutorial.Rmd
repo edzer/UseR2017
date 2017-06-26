@@ -8,26 +8,173 @@ output:
     theme: united
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
 ```
 
 ## A short history of handling spatial data in R
 
-* pre-2003: several people doing spatial statistics or map manipulation with S-Plus, and later R (e.g. spatial in MASS; spatstat, maptools, geoR, splancs, ...)
+* pre-2003: several people doing spatial statistics or map manipulation with S-Plus, and later R (e.g. spatial in MASS; spatstat, maptools, geoR, splancs, gstat, ...)
 * 2003: workshop at [DSC](https://www.r-project.org/conferences/DSC-2003/), agreement that a package with base classes would be useful
 * 2003: start of [r-sig-geo](https://stat.ethz.ch/mailman/listinfo/r-sig-geo)
 * 2003: [rgdal](https://cran.r-project.org/package=rgdal) released on CRAN
 * 2005: [sp](https://cran.r-project.org/package=sp) released on CRAN
-* 2008: we published [Applied Spatial Data Analysis with R](http://www.asdar-book.org/)
+* 2008: [Applied Spatial Data Analysis with R](http://www.asdar-book.org/)
 * 2011: [rgeos](https://cran.r-project.org/package=rgeos) released on CRAN
 * 2013: second edition of [Applied Spatial Data Analysis with R](http://www.asdar-book.org/)
+* 2016-7: [simple features for R](https://cran.r-project.org/package=sf), R consortium support
+* 2017-8: [spatiotemporal tidy arrays for R](https://github.com/edzer/stars), R consortium support
 
 ## Simple feature access
+
+Simple feature access is an [ISO standard](http://www.opengeospatial.org/standards/sfa).
+
+What is this about?
+
+* _feature_: abstraction of real world phenomena (type, or instance)
+* _simple feature_: feature with all geometric attributes described piecewise by straight line or planar interpolation between sets of points 
+
+* 7 + 10 [types](https://en.wikipedia.org/wiki/Well-known_text#Well-known_binary), 68 classes, of which 7 used in like 99% of the use cases
+
+* geometrycollection: why?
+* empty geometries: why?
+* objects of `GEOMETRY` type: what is it?
+
+```{r}
+library(sf)
+```
+links to 
+[GEOS](https://trac.osgeo.org/geos/), 
+[GDAL](http://www.gdal.org/), 
+[Proj.4](http://proj4.org/), 
+[liblwgeom](https://github.com/postgis/postgis/tree/svn-trunk/liblwgeom)
+
+_access_ refers to standardised encodings, such as well-known text (WKT):
+```{r}
+(pt = st_point(c(2,4)))
+```
+and well-known binary,
+```{r}
+(pt_bin = st_as_binary(pt))
+st_as_sfc(list(pt_bin))[[1]]
+```
+as well as to _names_ of functions to manipulate objects, e.g.
+```{r}
+st_dimension(pt)
+st_intersects(pt, pt, sparse = FALSE)
+```
+
+package `sf` uses simple R structures to store geometries:
+```{r}
+str(pt)
+str(st_linestring(rbind(c(0,0), c(0,1), c(1,1))))
+str(st_polygon(list(rbind(c(0,0), c(0,1), c(1,1), c(0,0)))))
+```
+
 ## Tidyverse and list-columns
+
 ## Package sf
+
+operations on sets: `st_cast`
+
+* `st_cast` without arguments: unravels a `geometrycollection`, converts X + multiX sets into sets of multiX
+
+In comparison to `sp`, package `sf`
+
+* implements all types and classes of simple features
+* has no support for gridded (raster) data
+* uses `data.frame`s for features, and list columns for feature geometry
+* uses S3 instead of S4
+* shares being built on top of GDAL, GEOS and Proj.4
+* tries to provide a simpler and cleaner API (or user experience)
+
+Three main classes:
+* `sf`: subclass of `data.frame` or tibble, containing at least one list-columns of class `sfc`
+* `sfc`: simple feature geometry list-column, carries `bbox` and `crs` as attributes, list elements are of class `sfg`
+* `sfg`: geometry of a _single_ feature; element of an `sfc` list-column
+
 ## Methods for simple features
+
+A complete list of methods for a particular class is obtained by
+```{r, eval = FALSE}
+methods(class = "sf")
+```
+
+### book keeping:
+
+* `st_as_text`: convert to WKT     
+* `st_as_binary`: convert to WKB
+* `st_as_sfc`: convert geometries to `sfc` (e.g., from WKT, WKB)
+* `as(x, "Spatial")`: convert to `Spatial*`
+* `st_as_sf`: convert to sf (e.g., convert from `Spatial*`)
+
+### logical binary geometry predicates
+
+* `st_intersects`: touch or overlap
+* `st_disjoint`: !intersects
+* `st_touches`: touch
+* `st_crosses`: cross (don't touch)
+* `st_within`: within
+* `st_contains`: contains
+* `st_overlaps`: overlaps
+* `st_covers`: cover
+* `st_covered_by`: covered by
+* `st_equals`: equals
+* `st_equals_exact`: equals, with some fuzz
+
+returns a sparse (default) or dense logical matrix:
+```{r}
+demo(nc, ask = FALSE, echo = FALSE)
+nc1 = nc[1:5,]
+st_intersects(nc1, nc1)
+st_intersects(nc1, nc1, sparse = FALSE)
+```
+
+### geometry generating logical operators
+
+* `st_union`: union of several geometries
+* `st_intersection`: intersection of pairs of geometries
+* `st_difference`: difference between pairs of geometries
+* `st_sym_difference`: symmetric difference (`xor`)
+
+```{r, fig=TRUE}
+opar = par(mfrow = c(1,2))
+ncg = st_geometry(nc[1:3,])
+plot(ncg, col = sf.colors(3, categorical = TRUE))
+plot(st_union(ncg))
+plot(st_intersection(ncg[1], ncg[2]), col = 'red', add = TRUE)
+par(opar)
+```
+
+### coordinate transformation/conversion
+
+* `st_transform`: transforms or converts coordinates to new reference system
+
+### manipulating geometries:
+
+* `st_line_merge`: merges lines
+* `st_segmentize`: adds points to straight lines
+* `st_voronoi`: creates voronoi tesselation
+* `st_centroid`: gives centroid of geometry
+* `st_convex_hull`: creates convex hull of set of points
+* `st_triangulate`: triangulates set of points (not constrained)
+* `st_polygonize`: creates polygon from lines that form a closed ring
+* `st_simplify`: simplifies lines by removing vertices
+* `st_split`: split a polygon given line geometry
+* `st_buffer`: compute a buffer around this geometry/each geometry
+* `st_make_valid`: tries to make an invalid geometry valid (requires lwgeom)
+* `st_boundary`: return the boundary of a geometry
+
+### convenience functions:
+
+* `st_zm`: sets or removes z and/or m geometry
+* `st_coordinates`: retrieve coordinates in a matrix or data.frame
+* `st_geometry`: set, or retrieve `sfc` from an `sf` object
+* `st_is`: check whether geometry is of a particular type
+
 ## Coordinate reference systems, and where to put them
+
 ## Pipe-based workflows
 ## Array data: rasters and time series
 ## Spatial time series
