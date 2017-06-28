@@ -8,9 +8,16 @@ output:
     theme: united
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
+```
+
+The R-markdown source of the tutorial is found [here](https://raw.githubusercontent.com/edzer/UseR2017/master/tutorial.Rmd).
+
+Required packages:
+```{r eval=FALSE}
+install.packages(c("sf", "dplyr", "devtools"))
+devtools::install_github("tidyverse/ggplot2")
 ```
 
 ## A short history of handling spatial data in R
