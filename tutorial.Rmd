@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
 * 2016-7: [simple features for R](https://cran.r-project.org/package=sf), R consortium support
 * 2017-8: [spatiotemporal tidy arrays for R](https://github.com/edzer/stars), R consortium support
 
-## Simple feature access
+## Simple feature access in R: package `sf`
 
 Simple feature access is an [ISO standard](http://www.opengeospatial.org/standards/sfa).
 
@@ -37,9 +37,8 @@ What is this about?
 
 * 7 + 10 [types](https://en.wikipedia.org/wiki/Well-known_text#Well-known_binary), 68 classes, of which 7 used in like 99% of the use cases
 
-* geometrycollection: why?
-* empty geometries: why?
-* objects of `GEOMETRY` type: what is it?
+* support for mixed type (`GEOMETRYCOLLECTION`), and type mix (`GEOMETRY`)
+* empty geometry (like `NA`)
 
 ```{r}
 library(sf)
@@ -57,6 +56,9 @@ _access_ refers to standardised encodings, such as well-known text (WKT):
 and well-known binary,
 ```{r}
 (pt_bin = st_as_binary(pt))
+```
+the binary form in which spatial databases put geometries in BLOBs, binary large objects, converted back by
+```{r}
 st_as_sfc(list(pt_bin))[[1]]
 ```
 as well as to _names_ of functions to manipulate objects, e.g.
@@ -72,42 +74,91 @@ str(st_linestring(rbind(c(0,0), c(0,1), c(1,1))))
 str(st_polygon(list(rbind(c(0,0), c(0,1), c(1,1), c(0,0)))))
 ```
 
-## Tidyverse and list-columns
+## Tidyverse, list-columns
 
-## Package sf
+According to the "tidy data" paper ([Wickham 2014](https://www.jstatsoft.org/article/view/v059i10)), data is tidy when
 
-operations on sets: `st_cast`
+1. Each variable forms a column.
+2. Each observation forms a row.
+3. Each type of observational unit forms a table.
 
-* `st_cast` without arguments: unravels a `geometrycollection`, converts X + multiX sets into sets of multiX
+but it is not directly clear how this maps to geometries: should a coordinate dimension (e.g. latitude) for a column, should each coordinate (x,y pair) form a colum, or should a whole geometry (e.g. polygon, with holes), form a column? Early attempts (and ggplot2 up to version 2.2.1) wanted _simple_ columns, meaning each coordinate split over two columns. An approach called _fortify_ would mold (tidy?) polygons into simple `data.frame`s. It is [well known](https://github.com/tidyverse/ggplot2/wiki/plotting-polygon-shapefiles) that this approach has its limitations when polygons have holes.
 
-In comparison to `sp`, package `sf`
+During the [UseR! 2016 keynote](https://channel9.msdn.com/Events/useR-international-R-User-conference/useR2016/Towards-a-grammar-of-interactive-graphics) of Hadley, list-columns have become tidy. One of the arguments for this was exactly this: polygons with holes are hard to represent in simple `data.frame`s. Other cases are: nested `data.frame`s, or columns that contain, for each record, a model object e.g. obtained from `lm`.
 
-* implements all types and classes of simple features
-* has no support for gridded (raster) data
-* uses `data.frame`s for features, and list columns for feature geometry
-* uses S3 instead of S4
-* shares being built on top of GDAL, GEOS and Proj.4
-* tries to provide a simpler and cleaner API (or user experience)
+The tidy data rule for simple feature means: we have a `data.frame` **where each _feature_ forms a row**. A single column (a list-column) contains the geometry for each observation.
 
-Three main classes:
-* `sf`: subclass of `data.frame` or tibble, containing at least one list-columns of class `sfc`
-* `sfc`: simple feature geometry list-column, carries `bbox` and `crs` as attributes, list elements are of class `sfg`
-* `sfg`: geometry of a _single_ feature; element of an `sfc` list-column
+Package `sf` puts geometries in a list-column of class `sfc`, where each list element is a feature geometry of class `sfg`. Feature geometries are represented in R by
+
+* a numeric vector for a single point (`POINT`)
+* a numeric matrix (each row a point) for a set of points (`MULTIPOINT` or `LINESTRING`)
+* a list of matrices for a set of set of points (`MULTIINESTRING`, `POLYGON`)
+* a list of lists of matrices  (`MULTIPOLYGON`)
+* a list of anything mentioned above  (`GEOMETRYCOLLECTION`)
+
+(all other classes also fall in one of these categories)
+
+Other tidy aspects of `sf`:
+
+* all functions/methods start with `st_`, use tab completion to search
+* `read_sf` is an alias for `st_read` with tidyverse defaults: silent, `stringAsFactors = FALSE`
+* all function have data as first argument, "pipe-friendly"
+* many tidy verbs implemented as methods for `sf` objects (see further down)
+
+## Reference systems
+
+Coordinates of geospatial data need a reference system:
+
+* geodesic/geographic coordinates need an order (long/lat or lat/long?), a unit (rad, degree?) and a datum (a reference ellipsoid: WGS84, ETRS89, NAD27?)
+* projected coordinates (e.g. UTM, web Mercator) need also measurement units, and some way of encoding how they relate to geodesic coordinates, in which datum (the Proj.4 string)
+
+Package `sf` has `crs` objects that register coordinate reference systems:
+```{r}
+st_crs("+proj=longlat +datum=WGS84")
+st_crs(3857)
+st_crs(NA)
+```
+
+`crs` objects are registered as an attribute of geometry collections.
+
+## sf: handling real data
+
+### reading and writing spatial data
+
+```{r}
+fname = system.file("shape/nc.shp", package = "sf")
+nc = read_sf(fname)
+print(nc, n = 3)
+plot(nc)
+```
 
 ## Methods for simple features
 
-A complete list of methods for a particular class is obtained by
+A complete list of methods for a particular class is obtained, after loading the class, by
 ```{r, eval = FALSE}
 methods(class = "sf")
 ```
 
-### book keeping:
+### book keeping, low-level I/O:
 
 * `st_as_text`: convert to WKT     
 * `st_as_binary`: convert to WKB
 * `st_as_sfc`: convert geometries to `sfc` (e.g., from WKT, WKB)
 * `as(x, "Spatial")`: convert to `Spatial*`
 * `st_as_sf`: convert to sf (e.g., convert from `Spatial*`)
+
+### coordinate transformation/conversion
+
+* `st_transform`: transforms or converts coordinates to new reference system
+
+```{r}
+(a1 = st_area(nc[1,]))                      # area, using geosphere::areaPolygon
+(a2 = st_area(st_transform(nc[1,], 32119))) # NC state plane, m
+(a3 = st_area(st_transform(nc[1,], 2264)))  # NC state plane, US foot
+units::set_units(a1, km^2)
+units::set_units(a2, km^2)
+units::set_units(a3, km^2)
+```
 
 ### logical binary geometry predicates
 
@@ -125,7 +176,6 @@ methods(class = "sf")
 
 returns a sparse (default) or dense logical matrix:
 ```{r}
-demo(nc, ask = FALSE, echo = FALSE)
 nc1 = nc[1:5,]
 st_intersects(nc1, nc1)
 st_intersects(nc1, nc1, sparse = FALSE)
@@ -142,14 +192,28 @@ st_intersects(nc1, nc1, sparse = FALSE)
 opar = par(mfrow = c(1,2))
 ncg = st_geometry(nc[1:3,])
 plot(ncg, col = sf.colors(3, categorical = TRUE))
-plot(st_union(ncg))
+u = st_union(ncg)
+plot(u)
 plot(st_intersection(ncg[1], ncg[2]), col = 'red', add = TRUE)
+plot(st_buffer(u, 0.1), border = 'blue', add = TRUE)
 par(opar)
 ```
 
-### coordinate transformation/conversion
+### higher-level operations using these:
 
-* `st_transform`: transforms or converts coordinates to new reference system
+* `aggregate`, `summarise`: unions (by default) grouped geometries
+* `st_interpolate_aw` for area-weighted interpolation
+
+```{r}
+g = st_make_grid(nc, n = c(20,10))
+a1 = st_interpolate_aw(nc["BIR74"], g, extensive = FALSE)
+sum(a1$BIR74) / sum(nc$BIR74) # not close to one: property is assumed spatially intensive
+a2 = st_interpolate_aw(nc["BIR74"], g, extensive = TRUE)
+sum(a2$BIR74) / sum(nc$BIR74)
+a1$intensive = a1$BIR74
+a1$extensive = a2$BIR74
+plot(a1[c("intensive", "extensive")])
+```
 
 ### manipulating geometries:
 
@@ -173,9 +237,70 @@ par(opar)
 * `st_geometry`: set, or retrieve `sfc` from an `sf` object
 * `st_is`: check whether geometry is of a particular type
 
+### handling mixes: `GEOMETRY`, `GEOMETRYCOLLECTION`
+
+### empty geometries
+
+operations on sets: `st_cast`
+
+* `st_cast` without arguments: unravels a `geometrycollection`, converts X + multiX sets into sets of multiX
+
+
+Three main classes:
+* `sf`: subclass of `data.frame` or tibble, containing at least one list-columns of class `sfc`
+* `sfc`: simple feature geometry list-column, carries `bbox` and `crs` as attributes, list elements are of class `sfg`
+* `sfg`: geometry of a _single_ feature; element of an `sfc` list-column
+
+
+
 ## Coordinate reference systems, and where to put them
 
-## Pipe-based workflows
-## Array data: rasters and time series
-## Spatial time series
-## Outlook
+## Pipe-based workflows and tidyverse
+
+When _both_ `sf` and `dplyr` are loaded, a number of `dplyr` generic methods become available for `sf` objects. They are:
+```{r}
+m1 = attr(methods(class = "sf"), "info")$generic
+suppressPackageStartupMessages(library(dplyr))
+m2 = attr(methods(class = "sf"), "info")$generic
+noquote(grep("_$", setdiff(m2, m1), invert = TRUE, value = TRUE))
+```
+Most of these do little more than simply make sure the returned object is of class `sf` again, but some of them do more, e.g. `summarise` by default aggregates (unions) the summarised geometries:
+```{r, plot=TRUE}
+nc <- read_sf(system.file("shape/nc.shp", package="sf"))
+cent <- st_geometry(nc) %>% st_centroid %>% st_coordinates 
+nc1 <- nc %>% mutate(area = as.numeric(st_area(.)), longitude = cent[,1]) %>%
+  group_by(cut(longitude,4))  %>% 
+  summarise(area = sum(area), BIR79 = sum(BIR79), dens = mean(BIR79/area))
+# devtools::install_github("tidyverse/ggplot2")
+library(ggplot2)
+ggplot(nc1) + geom_sf(aes(fill = dens))
+```
+
+## Array data: rasters, spatial time series
+
+## Summary/outlook
+
+In comparison to `sp`, package `sf`
+
+* implements all types and classes of simple features
+* has no support for gridded (raster) data
+* uses `data.frame`s for features, and list columns for feature geometry
+* uses S3 instead of S4
+* is also built on top of GDAL, GEOS and Proj.4
+* tries to provide a simpler and cleaner API (or user experience) conversions to/from `sp` makes it still easy to work "backwards"
+
+What's really new, and better in `sf`, compared to `sp`?
+
+* simple features is a widely adopted standard
+* tidyverse compatibility
+* ggplot2 support (`install_github`, under development)
+* support by [mapview](https://cran.r-project.org/package=mapview), [tmap](https://cran.r-project.org/package=tmap), [mapedit](https://github.com/r-spatial/mapedit)
+* binary geom ops: fast, low memory footprint; flexible `st_join`
+* (c)lean Rcpp interface to external dependencies GDAL/GEOS/Proj.4
+* fast WKB I/O, written in C++
+
+Still to do (no promises):
+
+* time series for simple features
+* raster data, raster-sf integration [stars](https://github.com/r-spatial/stars) - see my UseR! talk
+* scale from in-memory to in-database with spatial operations, similar to what `dplyr` does
