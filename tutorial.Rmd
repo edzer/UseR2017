@@ -91,7 +91,7 @@ According to the "tidy data" paper ([Wickham 2014](https://www.jstatsoft.org/art
 
 but it is not directly clear how this maps to geometries: should a coordinate dimension (e.g. latitude) for a column, should each coordinate (x,y pair) form a colum, or should a whole geometry (e.g. polygon, with holes), form a column? Early attempts (and ggplot2 up to version 2.2.1) wanted _simple_ columns, meaning each coordinate split over two columns. An approach called _fortify_ would mold (tidy?) polygons into simple `data.frame`s. It is [well known](https://github.com/tidyverse/ggplot2/wiki/plotting-polygon-shapefiles) that this approach has its limitations when polygons have holes.
 
-During the [UseR! 2016 keynote](https://channel9.msdn.com/Events/useR-international-R-User-conference/useR2016/Towards-a-grammar-of-interactive-graphics) of Hadley, list-columns have become tidy. One of the arguments for this was exactly this: polygons with holes are hard to represent in simple `data.frame`s. Other cases are: nested `data.frame`s, or columns that contain, for each record, a model object e.g. obtained from `lm`.
+Since the [UseR! 2016 keynote](https://channel9.msdn.com/Events/useR-international-R-User-conference/useR2016/Towards-a-grammar-of-interactive-graphics) of Hadley, list-columns have been declared tidy. One of the arguments for this was exactly this: polygons with holes are hard to represent in simple `data.frame`s. Other cases are: nested `data.frame`s, or columns that contain, for each record, a model object e.g. obtained from `lm`.
 
 The tidy data rule for simple feature means: we have a `data.frame` **where each _feature_ forms a row**. A single column (a list-column) contains the geometry for each observation.
 
@@ -107,23 +107,26 @@ Package `sf` puts geometries in a list-column of class `sfc`, where each list el
 
 Other tidy aspects of `sf`:
 
-* all functions/methods start with `st_`, use tab completion to search
-* `read_sf` is an alias for `st_read` with tidyverse defaults: silent, `stringAsFactors = FALSE`
+* all functions/methods start with `st_` (press tab to search), use `_` and underscores
 * all function have data as first argument, "pipe-friendly"
+* `read_sf` is an alias for `st_read` with tidy defaults: silent, `stringAsFactors = FALSE`
 * many tidy verbs implemented as methods for `sf` objects (see further down)
 
 ## Reference systems
 
-Coordinates of geospatial data need a reference system:
+If one wants to know which position of the Earth we refer to, coordinates of geospatial data require a reference system:
 
 * geodesic/geographic coordinates need an order (long/lat or lat/long?), a unit (rad, degree?) and a datum (a reference ellipsoid: WGS84, ETRS89, NAD27?)
 * projected coordinates (e.g. UTM, web Mercator) need also measurement units, and some way of encoding how they relate to geodesic coordinates, in which datum (the Proj.4 string)
 
+To handle coordinate reference systems, convert coordinates (projections) and do datum transformations, [Proj.4](http://proj4.org/) is the code base most widely adopted, and maintained, by the open source geospatial community.
+
 Package `sf` has `crs` objects that register coordinate reference systems:
 ```{r}
-st_crs("+proj=longlat +datum=WGS84")
-st_crs(3857)
-st_crs(NA)
+st_crs("+proj=longlat +datum=WGS84")  # "Proj.4 string"
+st_crs(3857)                          # EPSG code
+st_crs(3857)$units                    # reveal units
+st_crs(NA)                            # unknown (assumed planar/Cartesian)
 ```
 
 `crs` objects are registered as an attribute of geometry collections.
@@ -208,8 +211,8 @@ par(opar)
 
 ### higher-level operations using these:
 
-* `aggregate`, `summarise`: unions (by default) grouped geometries
-* `st_interpolate_aw` for area-weighted interpolation
+* `aggregate`, `summarise`: uses `st_union` (by default) to group feature geometries
+* `st_interpolate_aw`: area-weighted interpolation, uses `st_intersection` to interpolate or redistribute attribute values, based on area of overlap:
 
 ```{r}
 g = st_make_grid(nc, n = c(20,10))
@@ -217,9 +220,17 @@ a1 = st_interpolate_aw(nc["BIR74"], g, extensive = FALSE)
 sum(a1$BIR74) / sum(nc$BIR74) # not close to one: property is assumed spatially intensive
 a2 = st_interpolate_aw(nc["BIR74"], g, extensive = TRUE)
 sum(a2$BIR74) / sum(nc$BIR74)
-a1$intensive = a1$BIR74
-a1$extensive = a2$BIR74
-plot(a1[c("intensive", "extensive")])
+#a1$intensive = a1$BIR74
+#a1$extensive = a2$BIR74
+#plot(a1[c("intensive", "extensive")])
+a1$what = "intensive"
+a2$what = "extensive"
+# devtools::install_github("tidyverse/ggplot2")
+library(ggplot2)
+l = st_cast(nc, "LINESTRING")
+ggplot() + geom_sf(data = rbind(a1,a2), aes(fill = BIR74)) + 
+	geom_sf(data = l, col = 'lightgray') + facet_grid(what~.) +
+    scale_fill_gradientn(colors = sf.colors(10))
 ```
 
 ### manipulating geometries:
@@ -245,6 +256,19 @@ plot(a1[c("intensive", "extensive")])
 * `st_is`: check whether geometry is of a particular type
 
 ### handling mixes: `GEOMETRY`, `GEOMETRYCOLLECTION`
+
+We can have mixes of geometries with different types at two levels: at the feature level, and at the feature set level. At the feature level:
+```{r}
+p = st_point(c(0,1))
+mp = st_multipoint(rbind(c(1,1), c(3,3)))
+(gc = st_geometrycollection(list(p, mp)))
+st_sfc(gc)
+```
+at the feature set level:
+```{r}
+st_sfc(p, mp)
+```
+
 
 ### empty geometries
 
@@ -273,13 +297,12 @@ noquote(grep("_$", setdiff(m2, m1), invert = TRUE, value = TRUE))
 ```
 Most of these do little more than simply make sure the returned object is of class `sf` again, but some of them do more, e.g. `summarise` by default aggregates (unions) the summarised geometries:
 ```{r, plot=TRUE}
+library(dplyr)
 nc <- read_sf(system.file("shape/nc.shp", package="sf"))
 cent <- st_geometry(nc) %>% st_centroid %>% st_coordinates 
 nc1 <- nc %>% mutate(area = as.numeric(st_area(.)), longitude = cent[,1]) %>%
   group_by(cut(longitude,4))  %>% 
   summarise(area = sum(area), BIR79 = sum(BIR79), dens = mean(BIR79/area))
-# devtools::install_github("tidyverse/ggplot2")
-library(ggplot2)
 ggplot(nc1) + geom_sf(aes(fill = dens))
 ```
 
