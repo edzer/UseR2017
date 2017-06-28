@@ -261,52 +261,74 @@ We can have mixes of geometries with different types at two levels: at the featu
 ```{r}
 p = st_point(c(0,1))
 mp = st_multipoint(rbind(c(1,1), c(3,3)))
+ls = st_linestring(rbind(c(1,1), c(3,3)))
 (gc = st_geometrycollection(list(p, mp)))
 st_sfc(gc)
 ```
 at the feature set level:
 ```{r}
-st_sfc(p, mp)
+(gm = st_sfc(p, mp, ls))
 ```
+How to deal with such messy data? One thing we could do is select:
+```{r}
+sf = st_sf(a = 1:3, geom = gm)
+st_dimension(sf)
+sf[st_dimension(sf) == 1,]
+```
+another is to cast geometries to a common class:
+```{r}
+st_cast(sf, "MULTIPOINT")
+```
+which converts the `LINESTRING` to a `MULTIPOINT` as well.
 
+`st_cast` also tries to unravel `GEOMETRYCOLLECTION` geometries in their parts:
+```{r}
+(parts = st_cast(st_sf(a = 1, geometry = st_sfc(gc))))
+```
+potentially repeating associated attributes, and tries to find a common class when given no argument 
+```{r}
+st_cast(parts)
+```
 
 ### empty geometries
 
-operations on sets: `st_cast`
+Empty geometries server the role of `NA`, or missing values, for geometries, but they are typed:
+```{r}
+st_point()
+st_geometrycollection()
+```
 
-* `st_cast` without arguments: unravels a `geometrycollection`, converts X + multiX sets into sets of multiX
+They can be detected by `st_dimension` returning `NA`:
+```{r}
+st_sfc(st_point(0:1), st_point(), st_geometrycollection()) %>%
+	st_dimension
+```
 
-
-Three main classes:
-* `sf`: subclass of `data.frame` or tibble, containing at least one list-columns of class `sfc`
-* `sfc`: simple feature geometry list-column, carries `bbox` and `crs` as attributes, list elements are of class `sfg`
-* `sfg`: geometry of a _single_ feature; element of an `sfc` list-column
-
-
-
-## Coordinate reference systems, and where to put them
 
 ## Pipe-based workflows and tidyverse
 
-When _both_ `sf` and `dplyr` are loaded, a number of `dplyr` generic methods become available for `sf` objects. They are:
+When _both_ `sf` and `dplyr` are loaded, a number of generic methods in the `tidyverse` become available for `sf` objects. They are:
 ```{r}
 m1 = attr(methods(class = "sf"), "info")$generic
-suppressPackageStartupMessages(library(dplyr))
+library(tidyverse)
 m2 = attr(methods(class = "sf"), "info")$generic
-noquote(grep("_$", setdiff(m2, m1), invert = TRUE, value = TRUE))
+noquote(setdiff(m2, m1))
 ```
 Most of these do little more than simply make sure the returned object is of class `sf` again, but some of them do more, e.g. `summarise` by default aggregates (unions) the summarised geometries:
 ```{r, plot=TRUE}
-library(dplyr)
-nc <- read_sf(system.file("shape/nc.shp", package="sf"))
 cent <- st_geometry(nc) %>% st_centroid %>% st_coordinates 
-nc1 <- nc %>% mutate(area = as.numeric(st_area(.)), longitude = cent[,1]) %>%
+nc1 <- nc %>% 
+  mutate(area = as.numeric(st_area(.)), longitude = cent[,1]) %>%
   group_by(cut(longitude,4))  %>% 
   summarise(area = sum(area), BIR79 = sum(BIR79), dens = mean(BIR79/area))
 ggplot(nc1) + geom_sf(aes(fill = dens))
 ```
 
 ## Array data: rasters, spatial time series
+
+Although `sp` has some simple infrastructure for them in the `Spatial` class framework, raster data in R are best handled by the `raster` package. It is feature-rich, well integrated with the `Spatial` class framework, and can deal with massive rasters, as long as they fit on the local disk. It does not integrate particularly well with the tidyverse, with pipe-based workflows, or with simple features. Neither does it handle four- or higher-dimensional dimensional data (e.g. x,y.t,color), or time series data for features.
+
+A follow-up project of the "simple features for R" project tries to address a number of these issues
 
 ## Summary/outlook
 
