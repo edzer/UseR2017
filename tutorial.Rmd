@@ -211,6 +211,7 @@ u = st_union(ncg)
 plot(u, lwd = 2)
 plot(st_intersection(ncg[1], ncg[2]), col = 'red', add = TRUE)
 plot(st_buffer(u, 10000), border = 'blue', add = TRUE)
+# st_buffer(u, units::set_unit(10, km)) # with sf devel
 plot(st_buffer(u, -5000), border = 'green', add = TRUE)
 par(opar)
 ```
@@ -261,12 +262,13 @@ see also [this issue](https://github.com/edzer/sfr/issues/234).
 Which points touch four states?
 
 ```{r}
-library(dplyr)
-pts = st_intersection(nc, nc) %>% filter(st_dimension(.) == 0)
+pts = st_intersection(nc, nc)
+pts = pts[st_dimension(pts) == 0, ]
 plot(st_geometry(nc))
+plot(st_geometry(nc[sel,]), add = TRUE, col = 'grey')
 plot(st_geometry(pts), add = TRUE, col = '#ff000044', pch = 16)
-# no need to count neighbours for these points?
-#lengths(st_intersects(pts, nc))
+# how many neighbours does each of these points have?
+unique(lengths(st_intersects(pts, nc)))
 ```
 
 ### manipulating geometries
