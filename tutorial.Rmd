@@ -364,7 +364,7 @@ ggplot(nc1) + geom_sf(aes(fill = dens))
 
 ## Array data: rasters, spatial time series
 
-Although `sp` has some simple infrastructure for them in the `Spatial` class framework, raster data in R are best handled by the `raster` package. It is feature-rich, well integrated with the `Spatial` class framework, and can deal with massive rasters, as long as they fit on the local disk. It does not integrate particularly well with the tidyverse, with pipe-based workflows, or with simple features. Neither does it handle four- or higher-dimensional dimensional data (e.g. x,y.t,color), or time series data for features.
+Although `sp` has some simple infrastructure for them in the `Spatial` class framework, raster data in R are best handled by the `raster` package. It is feature-rich, well integrated with the `Spatial` class framework, and can deal with massive rasters, as long as they fit on the local disk. It does not integrate particularly well with the tidyverse, or with simple features. Neither does it handle four- or higher-dimensional dimensional data (e.g. x,y.t,color), or time series data for features.
 
 A follow-up project of the "simple features for R" project tries to address a number of these issues
 
