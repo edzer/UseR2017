@@ -258,6 +258,17 @@ plot(st_geometry(nc[sel,]), add = TRUE, col = 'grey')
 
 see also [this issue](https://github.com/edzer/sfr/issues/234).
 
+Which points touch four states?
+
+```{r}
+library(dplyr)
+pts = st_intersection(nc, nc) %>% filter(st_dimension(.) == 0)
+plot(st_geometry(nc))
+plot(st_geometry(pts), add = TRUE, col = '#ff000044', pch = 16)
+# no need to count neighbours for these points?
+#lengths(st_intersects(pts, nc))
+```
+
 ### manipulating geometries
 
 * `st_line_merge`: merges lines
