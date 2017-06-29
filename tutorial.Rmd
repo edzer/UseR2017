@@ -53,7 +53,7 @@ links to
 [GEOS](https://trac.osgeo.org/geos/), 
 [GDAL](http://www.gdal.org/), 
 [Proj.4](http://proj4.org/), 
-[liblwgeom](https://github.com/postgis/postgis/tree/svn-trunk/liblwgeom)
+[liblwgeom](https://github.com/postgis/postgis/tree/svn-trunk/liblwgeom); see also the [package vignettes](https://cran.r-project.org/package=sf)
 
 _access_ refers to standardised encodings, such as well-known text (WKT):
 ```{r}
@@ -166,7 +166,7 @@ A complete list of methods for a particular class is obtained, after loading the
 methods(class = "sf")
 ```
 
-### book keeping, low-level I/O:
+### book keeping, low-level I/O
 
 * `st_as_text`: convert to WKT     
 * `st_as_binary`: convert to WKB
@@ -252,7 +252,7 @@ nrow(x) # "rook" neighbours: should touch in a point
 ```
 see also [this issue](https://github.com/edzer/sfr/issues/234).
 
-### manipulating geometries:
+### manipulating geometries
 
 * `st_line_merge`: merges lines
 * `st_segmentize`: adds points to straight lines
@@ -267,7 +267,7 @@ see also [this issue](https://github.com/edzer/sfr/issues/234).
 * `st_make_valid`: tries to make an invalid geometry valid (requires lwgeom)
 * `st_boundary`: return the boundary of a geometry
 
-### convenience functions:
+### convenience functions
 
 * `st_zm`: sets or removes z and/or m geometry
 * `st_coordinates`: retrieve coordinates in a matrix or data.frame
@@ -365,6 +365,8 @@ What's really new, and better in `sf`, compared to `sp`?
 * simple features is a widely adopted standard
 * tidyverse compatibility
 * ggplot2 support (`install_github`, under development)
+* support for measurement [units](https://edzer.github.io/units/)
+* partial support for computations using geographic coordinates
 * support by [mapview](https://cran.r-project.org/package=mapview), [tmap](https://cran.r-project.org/package=tmap), [mapedit](https://github.com/r-spatial/mapedit); 15 revdeps on CRAN
 * binary geom ops: fast (indexed), low memory footprint; flexible `st_join`
 * (c)lean Rcpp interface to external dependencies GDAL/GEOS/Proj.4
@@ -373,6 +375,7 @@ What's really new, and better in `sf`, compared to `sp`?
 Still to do:
 
 * make `ggplot2::geom_sf` more robust and versatile
+* further improve support for geographic coordinates (s2?)
 * time series for simple features
 * raster data, raster-sf integration [stars](https://github.com/r-spatial/stars) - see my UseR! talk
 * scale from in-memory to in-database with spatial operations, similar to what `dplyr` does
