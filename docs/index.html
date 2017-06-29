@@ -582,7 +582,7 @@ st_geometrycollection()
 <p>When <em>both</em> <code>sf</code> and <code>dplyr</code> are loaded, a number of generic methods in the <code>tidyverse</code> become available for <code>sf</code> objects. They are:</p>
 <pre class="r"><code>m1 = attr(methods(class = &quot;sf&quot;), &quot;info&quot;)$generic
 library(tidyverse)
-## + ggplot2 2.2.1.9000        Date: 2017-06-29
+## + ggplot2 2.2.1.9000        Date: 2017-06-30
 ## + tibble  1.3.3                R: 3.4.0
 ## + tidyr   0.6.1               OS: Ubuntu 16.04.2 LTS
 ## + readr   1.1.0              GUI: X11
@@ -613,7 +613,7 @@ ggplot(nc1) + geom_sf(aes(fill = dens))</code></pre>
 </div>
 <div id="array-data-rasters-spatial-time-series" class="section level2">
 <h2>Array data: rasters, spatial time series</h2>
-<p>Although <code>sp</code> has some simple infrastructure for them in the <code>Spatial</code> class framework, raster data in R are best handled by the <code>raster</code> package. It is feature-rich, well integrated with the <code>Spatial</code> class framework, and can deal with massive rasters, as long as they fit on the local disk. It does not integrate particularly well with the tidyverse, with pipe-based workflows, or with simple features. Neither does it handle four- or higher-dimensional dimensional data (e.g. x,y.t,color), or time series data for features.</p>
+<p>Although <code>sp</code> has some simple infrastructure for them in the <code>Spatial</code> class framework, raster data in R are best handled by the <code>raster</code> package. It is feature-rich, well integrated with the <code>Spatial</code> class framework, and can deal with massive rasters, as long as they fit on the local disk. It does not integrate particularly well with the tidyverse, or with simple features. Neither does it handle four- or higher-dimensional dimensional data (e.g. x,y.t,color), or time series data for features.</p>
 <p>A follow-up project of the “simple features for R” project tries to address a number of these issues</p>
 </div>
 <div id="summaryoutlook" class="section level2">
