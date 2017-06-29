@@ -239,6 +239,7 @@ ggplot() + geom_sf(data = rbind(a1,a2), aes(fill = BIR74)) +
 	geom_sf(data = l, col = 'lightgray') + facet_grid(what~.) +
     scale_fill_gradientn(colors = sf.colors(10))
 ```
+
 Example of `st_join`:
 ```{r}
 nrow(nc)
@@ -248,8 +249,13 @@ x = st_join(nc, nc, join = st_touches)
 nrow(x) # neighbours, now excluding itself
 st_rook = function(a, b, prepared) st_relate(a, b, pattern = "F***1****")
 x = st_join(nc, nc, join = st_rook)
-nrow(x) # "rook" neighbours: should touch in a point
+nrow(x) # "rook" neighbours: touch over a line, not in a point
+# which states touch another state in a point only?
+sel = unlist(st_relate(nc, nc, pattern = "F***0****"))
+plot(st_geometry(nc))
+plot(st_geometry(nc[sel,]), add = TRUE, col = 'grey')
 ```
+
 see also [this issue](https://github.com/edzer/sfr/issues/234).
 
 ### manipulating geometries
