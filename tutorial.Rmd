@@ -16,7 +16,7 @@ The R-markdown source of the tutorial is found [here](https://raw.githubusercont
 
 Required packages:
 ```{r eval=FALSE}
-install.packages(c("sf", "dplyr", "devtools"))
+install.packages(c("sf", "tidyverse", "devtools"))
 devtools::install_github("tidyverse/ggplot2")
 ```
 
