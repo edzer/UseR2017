@@ -303,7 +303,24 @@ ls = st_linestring(rbind(c(1,1), c(3,3)))
 (gc = st_geometrycollection(list(p, mp)))
 st_sfc(gc)
 ```
-at the feature set level:
+
+Where do these come from? For instance from `st_intersection`:
+```{r}
+opar <- par(mfrow = c(1, 2))
+a <- st_polygon(list(cbind(c(0,0,7.5,7.5,0),c(0,-1,-1,0,0))))
+b <- st_polygon(list(cbind(c(0,1,2,3,4,5,6,7,7,0),c(1,0,.5,0,0,0.5,-0.5,-0.5,1,1))))
+plot(a, ylim = c(-1,1))
+title("intersecting two polygons:")
+plot(b, add = TRUE, border = 'red')
+(i <- st_intersection(a,b))
+plot(a, ylim = c(-1,1))
+title("GEOMETRYCOLLECTION")
+plot(b, add = TRUE, border = 'red')
+plot(i, add = TRUE, col = 'green', lwd = 2)
+par(opar)
+```
+
+At the feature set level we end up with `GEOMETRY` objects:
 ```{r}
 (gm = st_sfc(p, mp, ls))
 ```
