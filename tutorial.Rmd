@@ -23,15 +23,17 @@ devtools::install_github("tidyverse/ggplot2")
 ## A short history of handling spatial data in R
 
 * pre-2003: several people doing spatial statistics or map manipulation with S-Plus, and later R (e.g. spatial in MASS; spatstat, maptools, geoR, splancs, gstat, ...)
-* 2003: workshop at [DSC](https://www.r-project.org/conferences/DSC-2003/), agreement that a package with base classes would be useful
+* 2003: workshop at [DSC](https://www.r-project.org/conferences/DSC-2003/), concensus that a package with base classes should be useful; this ended up being a multiplicator
 * 2003: start of [r-sig-geo](https://stat.ethz.ch/mailman/listinfo/r-sig-geo)
 * 2003: [rgdal](https://cran.r-project.org/package=rgdal) released on CRAN
-* 2005: [sp](https://cran.r-project.org/package=sp) released on CRAN
+* 2005: [sp](https://cran.r-project.org/package=sp) released on CRAN; sp support in rgdal
 * 2008: [Applied Spatial Data Analysis with R](http://www.asdar-book.org/)
 * 2011: [rgeos](https://cran.r-project.org/package=rgeos) released on CRAN
 * 2013: second edition of [Applied Spatial Data Analysis with R](http://www.asdar-book.org/)
-* 2016-7: [simple features for R](https://cran.r-project.org/package=sf), R consortium support
-* 2017-8: [spatiotemporal tidy arrays for R](https://github.com/edzer/stars), R consortium support
+* 2016-7: [simple features for R](https://cran.r-project.org/package=sf), R consortium support (considered pretty much "finished")
+* 2017-8: [spatiotemporal tidy arrays for R](https://github.com/edzer/stars), R consortium support (design phase)
+
+![](spverse.png)
 
 ## Simple feature access in R: package `sf`
 
@@ -42,9 +44,9 @@ What is this about?
 * _feature_: abstraction of real world phenomena (type, or instance)
 * _simple feature_: feature with all geometric attributes described piecewise by straight line or planar interpolation between sets of points 
 * 7 + 10 [types](https://en.wikipedia.org/wiki/Well-known_text#Well-known_binary), 68 classes, of which 7 used in like 99% of the use cases
-* support for mixe d type (`GEOMETRYCOLLECTION`), and type mix (`GEOMETRY`)
-* empty geometry (like `NA`)
 * text and binary serialisations (WKT, WKB)
+* support for mixed type (`GEOMETRYCOLLECTION`), and type mix (`GEOMETRY`)
+* support for empty geometry (empty set: somewhat like `NA`)
 
 ```{r}
 library(sf)
@@ -88,13 +90,13 @@ According to the "tidy data" paper ([Wickham 2014](https://www.jstatsoft.org/art
 2. Each observation forms a row.
 3. Each type of observational unit forms a table.
 
-but it is not directly clear how this maps to geometries: should a coordinate dimension (e.g. latitude) for a column, should each coordinate (x,y pair) form a colum, or should a whole geometry (e.g. polygon, with holes), form a column? Early attempts (and ggplot2 up to version 2.2.1) wanted _simple_ columns, meaning each coordinate split over two columns. An approach called _fortify_ would mold (tidy?) polygons into simple `data.frame`s. It is [well known](https://github.com/tidyverse/ggplot2/wiki/plotting-polygon-shapefiles) that this approach has its limitations when polygons have holes.
+but it is not directly clear how this maps to geometries: should a coordinate dimension (e.g. latitude) form a column, should each coordinate (x,y pair) form a colum, or should a whole geometry (e.g. polygon, with holes), form a column? Early attempts (and ggplot2 up to version 2.2.1) wanted _simple_ columns, meaning each coordinate split over two columns. An approach called _fortify_ would mold (tidy?) polygons into simple `data.frame`s. It is [well known](https://github.com/tidyverse/ggplot2/wiki/plotting-polygon-shapefiles) that this approach has its limitations when polygons have holes.
 
 Since the [UseR! 2016 keynote](https://channel9.msdn.com/Events/useR-international-R-User-conference/useR2016/Towards-a-grammar-of-interactive-graphics) of Hadley, list-columns have been declared tidy. One of the arguments for this was exactly this: polygons with holes are hard to represent in simple `data.frame`s. Other cases are: nested `data.frame`s, or columns that contain, for each record, a model object e.g. obtained from `lm`.
 
-The tidy data rule for simple feature means: we have a `data.frame` **where each _feature_ forms a row**. A single column (a list-column) contains the geometry for each observation.
+The tidy data rule for simple feature means: we have a `data.frame` **where each _feature_ forms a row**. A single column (a list-column) contains the geometry for each observation. This resembles spatial databases, such as [PostGIS](http://www.postgis.net/).
 
-Package `sf` puts geometries in a list-column of class `sfc`, where each list element is a feature geometry of class `sfg`. Feature geometries are represented in R by
+Package `sf` puts features in `sf` tables deriving from `data.frame` or `tbl_df`, which have geometries in a list-column of class `sfc`, where each list element is a single feature's geometry of class `sfg`. Feature geometries are represented in R by
 
 * a numeric vector for a single point (`POINT`)
 * a numeric matrix (each row a point) for a set of points (`MULTIPOINT` or `LINESTRING`)
@@ -106,7 +108,7 @@ Package `sf` puts geometries in a list-column of class `sfc`, where each list el
 
 Other tidy aspects of `sf`:
 
-* all functions/methods start with `st_` (press tab to search), use `_` and underscores
+* all functions/methods start with `st_` (press tab to search), use `_` and lower case
 * all function have data as first argument, "pipe-friendly"
 * `read_sf` is an alias for `st_read` with tidy defaults: silent, `stringAsFactors = FALSE`
 * many tidy verbs implemented as methods for `sf` objects (see further down)
@@ -115,10 +117,10 @@ Other tidy aspects of `sf`:
 
 If one wants to know which position of the Earth we refer to, coordinates of geospatial data require a reference system:
 
-* geodesic/geographic coordinates need an order (long/lat or lat/long?), a unit (rad, degree?) and a datum (a reference ellipsoid: WGS84, ETRS89, NAD27?)
-* projected coordinates (e.g. UTM, web Mercator) need also measurement units, and some way of encoding how they relate to geodesic coordinates, in which datum (the Proj.4 string)
+* geodesic/geographic coordinates need an order (long/lat or lat/long?), a unit (rad, arc_degree?) and a datum (a reference ellipsoid: WGS84, ETRS89, NAD27?)
+* cartesian/projected coordinates (e.g. UTM, web Mercator) need also measurement units, and some way of encoding how they relate to geodesic coordinates, in which datum (the Proj.4 string)
 
-To handle coordinate reference systems, convert coordinates (projections) and do datum transformations, [Proj.4](http://proj4.org/) is the code base most widely adopted, and maintained, by the open source geospatial community.
+To handle coordinate reference systems, to convert coordinates (projections) and do datum transformations, [Proj.4](http://proj4.org/) is the code base most widely adopted, and actively maintained, by the open source geospatial community.
 
 Package `sf` has `crs` objects that register coordinate reference systems:
 ```{r}
@@ -243,6 +245,13 @@ ggplot() + geom_sf(data = rbind(a1,a2), aes(fill = BIR74)) +
 
 Example of `st_join`:
 ```{r}
+# find county matching a coordinate:
+pt = st_point(c(472038, 210385))
+pt_sfc = st_sfc(pt, crs = st_crs(nc))
+pt_sf = st_sf(a = 1, geom = pt_sfc)
+st_join(pt_sf, nc)
+st_join(nc, pt_sf, left = FALSE) # full join
+# join-with-self:
 nrow(nc)
 x = st_join(nc, nc)
 nrow(x) # neighbours AND each state with itself
