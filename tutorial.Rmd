@@ -237,7 +237,7 @@ a1$what = "intensive"
 a2$what = "extensive"
 # devtools::install_github("tidyverse/ggplot2")
 library(ggplot2)
-l = st_cast(nc, "LINESTRING")
+l = st_cast(nc, "MULTILINESTRING")
 ggplot() + geom_sf(data = rbind(a1,a2), aes(fill = BIR74)) + 
 	geom_sf(data = l, col = 'lightgray') + facet_grid(what~.) +
     scale_fill_gradientn(colors = sf.colors(10))
