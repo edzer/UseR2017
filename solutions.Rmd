@@ -1,0 +1,94 @@
+---
+title: "solutions"
+author: "Edzer Pebesma"
+date: "August 20, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(mapview)
+```
+
+possibly after installing it. Consider the datasets `breweries`, `trails` and `franconia`, which are available after loading `mapview`. (Note that the `trails` dataset is a subset from a larger dataset, based on constraining distances to existing breweries.)
+
+1. For each of the datasets, describe which geometry type it has, how many features (observations) and attributes (variables) it has.
+```{r}
+library(sf)
+breweries
+trails
+franconia
+```
+2. Plot each of the three objects.
+```{r}
+plot(breweries)
+plot(trails)
+plot(franconia)
+```
+3. Export the `franconia` dataset to a geopackage file (`franconia.gpkg`) and try to view that file in QGIS (if you have that available on your computer).
+```{r}
+write_sf(franconia, "/tmp/franconia.gpkg") # may need a different path!
+```
+5. compare the coordinate reference systems (CRS) of the three objects. In case of differing coordinate reference systems, convert all of them to a single CRS.
+```{r}
+st_crs(breweries)
+st_crs(franconia)
+st_crs(trails)
+franconia_utm = st_transform(franconia, st_crs(trails))
+breweries_utm = st_transform(breweries, st_crs(trails))
+```
+6. For each of the trails, find out which brewery is closest to the trail.
+```{r}
+# with st_distance:
+dists = st_distance(trails, breweries_utm)
+dists[1:5, 1:5]
+closests = apply(dists, 1, which.min)
+closests[1:5]
+# with st_nearest_feature
+n = st_nearest_feature(trails, breweries_utm)
+n[1:5]
+# interestingly not all identical:
+table(n == closests)
+which(n != closests)
+# check the first:
+dists[181, c(closests[181], n[181])] # ambiguous question!
+```
+7. For each of the trails, find out the distance to the clostest brewery.
+```{r}
+apply(dists, 1, min)
+```
+8. For each of the trails, find out how many breweries it has that are less than 500 m away from the trail, per km of trail.
+```{r}
+apply(dists, 1, function(x) sum(x < 500))
+```
+9. For each of the regions in `franconia`, find out how many `breweries` it contains, and add this number as a field to the `franconia` object.
+```{r}
+st_contains(franconia, breweries)
+lengths(st_contains(franconia, breweries))[1:5]
+franconia$n_breweries = lengths(st_contains(franconia, breweries))
+```
+10. For each of the regions in `franconia`, count the total `number.of.types` of beers brewed by the all the breweries in the region. 
+```{r}
+a = aggregate(breweries["number.of.types"], franconia, sum)
+plot(a) # what could have gone wrong?
+summary(breweries$number.of.types)
+a = aggregate(breweries["number.of.types"], franconia, sum, na.rm = TRUE)
+plot(a)
+```
+11. Count the total length of the trails per region in `franconia`
+```{r}
+i = st_intersection(franconia_utm, trails)
+# wrong approach:
+i$length = st_length(i)
+trail_length = aggregate(i["length"], franconia_utm, sum) # TOO MANY MATCHES: touches included
+library(tidyverse)
+j <- i %>% group_by(NUTS_ID) %>% summarize(l = sum(length))
+fr_join = left_join(franconia_utm, as.data.frame(j)[c("NUTS_ID", "l")])
+fr_join[1:3,]
+# check:
+sum(fr_join$l, na.rm = TRUE)
+sum(st_length(i)) # ignores trails outside franconia
+```

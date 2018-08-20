@@ -1,7 +1,7 @@
 ---
 title: "Spatial Data in R: New Directions"
 author: "Edzer Pebesma"
-date: "Jul 4, 2017, UseR! tutorial"
+date: "GEOSTAT 2018 (based on: UseR! 2017 tutorial)"
 output: 
   html_document:
     toc: true
@@ -17,7 +17,6 @@ The R-markdown source of the tutorial is found [here](https://raw.githubusercont
 Required packages:
 ```{r eval=FALSE}
 install.packages(c("sf", "tidyverse", "devtools"))
-devtools::install_github("tidyverse/ggplot2")
 ```
 
 ## A short history of handling spatial data in R
@@ -32,6 +31,7 @@ devtools::install_github("tidyverse/ggplot2")
 * 2013: second edition of [Applied Spatial Data Analysis with R](http://www.asdar-book.org/)
 * 2016-7: [simple features for R](https://cran.r-project.org/package=sf), R consortium support (considered pretty much "finished")
 * 2017-8: [spatiotemporal tidy arrays for R](https://github.com/edzer/stars), R consortium support (design phase)
+* 2018: ggplot2 3.0.0 supports plotting of simple features
 
 ![](spverse.png)
 
@@ -176,7 +176,6 @@ methods(class = "sf")
 * `as(x, "Spatial")`: convert to `Spatial*`
 * `st_as_sf`: convert to sf (e.g., convert from `Spatial*`)
 
-
 ### logical binary geometry predicates
 
 * `st_intersects`: touch or overlap
@@ -191,11 +190,11 @@ methods(class = "sf")
 * `st_equals`: equals
 * `st_equals_exact`: equals, with some fuzz
 
-returns a sparse (default) or dense logical matrix:
+returns an object of class `sgbp` (sparse geometry binary predicate); there is an `as.matrix` method for these objects to get the dense logical matrix (which may become huge when you have many features):
 ```{r}
 nc1 = nc[1:5,]
-st_intersects(nc1, nc1)
-st_intersects(nc1, nc1, sparse = FALSE)
+(i = st_intersects(nc1, nc1))
+as.matrix(i)[1:5,1:5]
 ```
 
 ### geometry generating logical operators
@@ -217,6 +216,14 @@ plot(st_buffer(u, 10000), border = 'blue', add = TRUE)
 plot(st_buffer(u, -5000), border = 'green', add = TRUE)
 par(opar)
 ```
+
+### higher-level intersections and differences
+
+If you want not only intersections of differences for _pairs_ of geometries, but e.g. all unique, non-intersecting polygons resulting from higher-order intersections, or unique differences from sequential differencing, you can use `st_intersection` or `st_difference` with a single argument.
+
+See the examples in the [documentation](https://r-spatial.github.io/sf/reference/geos_binary_ops.html).
+
+This means that `st_intersection(x)` does something different from `st_intersection(x,x)`, which may confuse sometimes.
 
 ### higher-level operations: summarise, interpolate, aggregate, st_join
 
@@ -362,10 +369,9 @@ st_point()
 st_geometrycollection()
 ```
 
-They can be detected by `st_dimension` returning `NA`:
+They can be detected by `st_is_empty`:
 ```{r}
-st_sfc(st_point(0:1), st_point(), st_geometrycollection()) %>%
-	st_dimension
+st_sfc(st_point(0:1), st_point(), st_geometrycollection()) %>% st_is_empty
 ```
 
 
@@ -409,18 +415,30 @@ What's really new, and better in `sf`, compared to `sp`?
 
 * simple features is a widely adopted standard
 * tidyverse compatibility
-* ggplot2 support (`install_github`, under development)
-* support for measurement [units](https://edzer.github.io/units/)
-* partial support for computations using geographic coordinates
-* support by [mapview](https://cran.r-project.org/package=mapview), [tmap](https://cran.r-project.org/package=tmap), [mapedit](https://github.com/r-spatial/mapedit); 15 revdeps on CRAN
-* binary geom ops: fast (indexed), low memory footprint; flexible `st_join`
-* (c)lean Rcpp interface to external dependencies GDAL/GEOS/Proj.4
+* ggplot2 support
+* rigorous support for measurement [units](https://r-quantities.github.io/units/)
+* (partial) support for computations using geographic coordinates
+* support by [mapview](https://cran.r-project.org/package=mapview), [tmap](https://cran.r-project.org/package=tmap), [mapedit](https://github.com/r-spatial/mapedit); 70 revdeps on CRAN
+* binary geometry ops: fast (indexed), low memory footprint
+* `st_join` for spatial joins, with flexible (user-definable) join predicates
+* (c)lean Rcpp interface to external dependencies GDAL/GEOS/PROJ
 * fast WKB (de)serialization, in C++
 
-Still to do:
+### Exercises
 
-* make `ggplot2::geom_sf` more robust and versatile
-* further improve support for geographic coordinates (s2?)
-* time series for simple features
-* raster data, raster-sf integration [stars](https://github.com/r-spatial/stars) - see my UseR! talk
-* scale from in-memory to in-database with spatial operations, similar to what `dplyr` does
+Load library `mapview` by
+```{r}
+library(mapview)
+```
+possibly after installing it. Consider the datasets `breweries`, `trails` and `franconia`, which are available after loading `mapview`. (Note that the `trails` dataset is a subset from a larger dataset, based on constraining distances to existing breweries.)
+
+1. For each of the datasets, describe which geometry type it has, how many features (observations) and attributes (variables) it has.
+2. Plot each of the three objects.
+3. Export the `franconia` dataset to a geopackage file (`franconia.gpkg`) and try to view that file in QGIS (if you have that available on your computer).
+5. compare the coordinate reference systems (CRS) of the three objects. In case of differing coordinate reference systems, convert all of them to a single CRS.
+6. For each of the trails, find out which brewery is closest to the trail.
+7. For each of the trails, find out the distance to the clostest brewery.
+8. For each of the trails, find out how many breweries it has that are less than 500 m away from the trail, per km of trail.
+9. For each of the regions in `franconia`, find out how many `breweries` it contains, and add this number as a field to the `franconia` object.
+10. For each of the regions in `franconia`, count the total `number.of.types` of beers brewed by the all the breweries in the region. 
+11. Count the total length of the trails per region in `franconia`
