@@ -1,5 +1,5 @@
 ---
-title: "Spatial Data in R: New Directions"
+title: "Simple Features for R/tidy spatial analysis"
 author: "Edzer Pebesma"
 date: "GEOSTAT 2018 (based on: UseR! 2017 tutorial)"
 output: 
@@ -317,7 +317,8 @@ p = st_point(c(0,1))
 mp = st_multipoint(rbind(c(1,1), c(3,3)))
 ls = st_linestring(rbind(c(1,1), c(3,3)))
 (gc = st_geometrycollection(list(p, mp)))
-st_sfc(gc)
+(g = st_sfc(gc))
+st_collection_extract(g, "POINT")
 ```
 
 Where do these come from? For instance from `st_intersection`:
