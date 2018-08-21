@@ -32,7 +32,7 @@ plot(franconia)
 ```{r}
 write_sf(franconia, "/tmp/franconia.gpkg") # may need a different path!
 ```
-5. compare the coordinate reference systems (CRS) of the three objects. In case of differing coordinate reference systems, convert all of them to a single CRS.
+4. compare the coordinate reference systems (CRS) of the three objects. In case of differing coordinate reference systems, convert all of them to a single CRS.
 ```{r}
 st_crs(breweries)
 st_crs(franconia)
@@ -40,7 +40,7 @@ st_crs(trails)
 franconia_utm = st_transform(franconia, st_crs(trails))
 breweries_utm = st_transform(breweries, st_crs(trails))
 ```
-6. For each of the trails, find out which brewery is closest to the trail.
+5. For each of the trails, find out which brewery is closest to the trail.
 ```{r}
 # with st_distance:
 dists = st_distance(trails, breweries_utm)
@@ -56,24 +56,24 @@ which(n != closests)
 # check the first:
 dists[181, c(closests[181], n[181])] # ambiguous question!
 ```
-7. For each of the trails, find out the distance to the clostest brewery.
+6. For each of the trails, find out the distance to the clostest brewery.
 ```{r}
 apply(dists, 1, min)
 ```
-8. For each of the trails, find out how many breweries it has that are less than 500 m away from the trail, per km of trail.
+7. For each of the trails, find out how many breweries it has that are less than 500 m away from the trail, per km of trail.
 ```{r}
 apply(dists, 1, function(x) sum(x < 500))
 n = apply(dists, 1, function(x) sum(x < 500))
 ans = n / units::set_units(st_length(trails), km)
 summary(ans)
 ```
-9. For each of the regions in `franconia`, find out how many `breweries` it contains, and add this number as a field to the `franconia` object.
+8. For each of the regions in `franconia`, find out how many `breweries` it contains, and add this number as a field to the `franconia` object.
 ```{r}
 st_contains(franconia_utm, breweries_utm)
 lengths(st_contains(franconia_utm, breweries_utm))[1:5]
 franconia_utm$n_breweries = lengths(st_contains(franconia_utm, breweries_utm))
 ```
-10. For each of the regions in `franconia`, count the total `number.of.types` of beers brewed by the all the breweries in the region. 
+9. For each of the regions in `franconia`, count the total `number.of.types` of beers brewed by the all the breweries in the region. 
 ```{r}
 a = aggregate(breweries["number.of.types"], franconia, sum)
 plot(a) # what could have gone wrong?
@@ -81,7 +81,7 @@ summary(breweries$number.of.types)
 a = aggregate(breweries["number.of.types"], franconia, sum, na.rm = TRUE)
 plot(a)
 ```
-11. Count the total length of the trails per region in `franconia`
+10. Count the total length of the trails per region in `franconia`
 ```{r}
 i = st_intersection(franconia_utm, trails)
 # wrong approach:
