@@ -63,12 +63,15 @@ apply(dists, 1, min)
 8. For each of the trails, find out how many breweries it has that are less than 500 m away from the trail, per km of trail.
 ```{r}
 apply(dists, 1, function(x) sum(x < 500))
+n = apply(dists, 1, function(x) sum(x < 500))
+ans = n / units::set_units(st_length(trails), km)
+summary(ans)
 ```
 9. For each of the regions in `franconia`, find out how many `breweries` it contains, and add this number as a field to the `franconia` object.
 ```{r}
-st_contains(franconia, breweries)
-lengths(st_contains(franconia, breweries))[1:5]
-franconia$n_breweries = lengths(st_contains(franconia, breweries))
+st_contains(franconia_utm, breweries_utm)
+lengths(st_contains(franconia_utm, breweries_utm))[1:5]
+franconia_utm$n_breweries = lengths(st_contains(franconia_utm, breweries_utm))
 ```
 10. For each of the regions in `franconia`, count the total `number.of.types` of beers brewed by the all the breweries in the region. 
 ```{r}
@@ -84,6 +87,8 @@ i = st_intersection(franconia_utm, trails)
 # wrong approach:
 i$length = st_length(i)
 trail_length = aggregate(i["length"], franconia_utm, sum) # TOO MANY MATCHES: touches included
+# maybe better use aggregate with join = st_contains, or a different predicate?
+# as another approach: join by NUTS_ID:
 library(tidyverse)
 j <- i %>% group_by(NUTS_ID) %>% summarize(l = sum(length))
 fr_join = left_join(franconia_utm, as.data.frame(j)[c("NUTS_ID", "l")])
