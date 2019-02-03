@@ -364,7 +364,7 @@ st_cast(parts)
 
 ### empty geometries
 
-Empty geometries server the role of `NA`, or missing values, for geometries, but they are typed:
+Empty geometries serve the role of `NA`, or missing values, for geometries, but they are typed:
 ```{r}
 st_point()
 st_geometrycollection()
